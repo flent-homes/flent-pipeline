@@ -58,8 +58,8 @@ function tableColumnWidths(col: ColumnDef): { th: string; td: string } {
     key.includes("s. no");
   if (narrow) {
     return {
-      th: "px-2 py-3.5 font-semibold w-[3.75rem] min-w-[3.25rem] max-w-[4.5rem] whitespace-nowrap",
-      td: "max-w-[4.5rem] px-2 py-3 align-top text-app-text tabular-nums whitespace-nowrap",
+      th: "px-2 py-3.5 font-semibold w-[4.125rem] min-w-[3.575rem] max-w-[4.95rem] whitespace-nowrap",
+      td: "max-w-[4.95rem] px-2 py-3 align-top text-app-text tabular-nums whitespace-nowrap",
     };
   }
   return {
