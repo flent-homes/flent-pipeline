@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flent pipeline (web)
 
-## Getting Started
+Next.js app that reads **SupplyDump** (or any tab) via **Google Sheets API** and shows a pipeline table. This is the first slice toward the full GCP product (Cloud Run, Vertex, Slack, reminders).
 
-First, run the development server:
+## Quick start
+
+See [SETUP.md](./SETUP.md) for Google Cloud service account, sharing the sheet, and `.env.local`.
+
+**Push to GitHub:** step-by-step **[GITHUB.md](./GITHUB.md)**.
+
+**Deploy to production:** **[Production deploy (Vercel)](./SETUP.md#production-deploy-vercel--recommended)** in [SETUP.md](./SETUP.md) (env vars, root directory if the app is in a subfolder, CLI commands).
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- UI: `/` and `/pipeline`
+- API: `GET /api/health`, `GET /api/deals`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Repo layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/lib/sheets.ts` — Sheets client + row → object helper
+- `src/lib/env.ts` — environment validation
+- `src/app/api/deals/route.ts` — JSON API for the dashboard
 
-## Learn More
+## Security
 
-To learn more about Next.js, take a look at the following resources:
+Never commit real `GOOGLE_SERVICE_ACCOUNT_JSON`. Use `.env.local` (gitignored) or Secret Manager on GCP.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET | `/api/deals` | List deals (columns + `_sheetRow` on each row) |
+| PATCH | `/api/deals/[row]` | Update cells for sheet row `row` (JSON body: column keys → values) |
+| POST | `/api/ai/score` | Body `{ "sheetRow": number, "applyToSheet"?: boolean }` — Vertex Gemini |
+| POST | `/api/slack/notify` | Body `{ "text": string }` — requires `SLACK_WEBHOOK_URL` |
 
-## Deploy on Vercel
+See [INTEGRATIONS.md](./INTEGRATIONS.md) for GCP and Slack setup.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Root causes fixed in this iteration
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Duplicate column headers** (e.g. two “Comments”) broke React keys and overwrote data — headers are now unique keys (`Comments`, `Comments (2)`, …).
+- **`next lint` failed** — the script now runs `eslint .` (Next 16 quirk with project dir).
+- **Sheets row identity** — each deal includes **`_sheetRow`** for PATCH and AI scoring.

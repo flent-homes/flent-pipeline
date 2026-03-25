@@ -2,20 +2,137 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Flent brand kit — semantic tokens (green primary, night secondary, cyan accents).
+ * Prefer `bg-app-hover`, `border-brand`, etc. over raw slate/zinc in UI code.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f8f7;
+  --foreground: #0f172a;
+
+  --brand-green: #008e75;
+  --brand-night: #614ece;
+  --brand-cyan: #93f2e9;
+
+  --app-bg: #f6f8f7;
+  --app-surface: #ffffff;
+  --app-surface2: #eef2f0;
+  --app-card: #ffffff;
+  --app-panel: #fbfcfb;
+  --app-border: #dce5e1;
+  --app-muted: #5c6d68;
+  --app-text: #0f172a;
+  --app-input: #f3f7f5;
+
+  /* Interactive — tinted with brand green */
+  --app-hover: rgba(0, 142, 117, 0.08);
+  --app-hover-strong: rgba(0, 142, 117, 0.14);
+  /* Secondary surfaces — night purple (filters, secondary CTAs) */
+  --app-hover-night: rgba(97, 78, 206, 0.09);
+  --app-hover-night-strong: rgba(97, 78, 206, 0.16);
+
+  --app-ring: rgba(0, 142, 117, 0.35);
+  --shadow-brand: 0 12px 40px rgba(97, 78, 206, 0.07), 0 4px 14px rgba(0, 142, 117, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #060908;
+  --foreground: #f4f4f5;
+
+  --app-bg: #060908;
+  --app-surface: #0a100d;
+  --app-surface2: #080d0b;
+  --app-card: rgba(255, 255, 255, 0.03);
+  --app-panel: #0c1210;
+  --app-border: rgba(255, 255, 255, 0.1);
+  --app-muted: #8b9a94;
+  --app-text: #f4f4f5;
+  --app-input: rgba(0, 0, 0, 0.45);
+
+  --app-hover: rgba(0, 142, 117, 0.18);
+  --app-hover-strong: rgba(0, 142, 117, 0.26);
+  --app-hover-night: rgba(147, 242, 233, 0.06);
+  --app-hover-night-strong: rgba(97, 78, 206, 0.22);
+
+  --app-ring: rgba(147, 242, 233, 0.35);
+  --shadow-brand: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 142, 117, 0.12);
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 90% 60% at 100% -15%, rgba(97, 78, 206, 0.09), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 0% 105%, rgba(0, 142, 117, 0.07), transparent 48%);
+  background-attachment: fixed;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(ellipse 90% 55% at 100% -10%, rgba(97, 78, 206, 0.18), transparent 55%),
+    radial-gradient(ellipse 65% 45% at 0% 100%, rgba(0, 142, 117, 0.12), transparent 50%);
+}
+
+@layer components {
+  /* Surfaces — CSS vars so we don’t rely on @apply + Tailwind color name quirks */
+  .surface-elevated {
+    border-radius: 1rem;
+    border: 1px solid var(--app-border);
+    background: var(--app-card);
+    color: var(--app-text);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+  .dark .surface-elevated {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+  .surface-muted {
+    border-radius: 1rem;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface2);
+    color: var(--app-text);
+  }
+  .text-brand-accent {
+    color: var(--brand-green);
+  }
+  .dark .text-brand-accent {
+    color: var(--brand-cyan);
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    background: var(--brand-green);
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 142, 117, 0.25);
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--app-text);
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--app-hover);
+  }
+  .dark .btn-secondary:hover:not(:disabled) {
+    background: var(--app-hover-strong);
+  }
 }
