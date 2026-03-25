@@ -152,7 +152,7 @@ export function DealDetailPanel({
           </h2>
           <div className="flex flex-wrap gap-2 mt-2">
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${stageBadgeClass(String(selected[STAGE_KEY] ?? ""))}`}
+              className={`stage-badge inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${stageBadgeClass(String(selected[STAGE_KEY] ?? ""))}`}
             >
               {String(selected[STAGE_KEY] || "—")}
             </span>

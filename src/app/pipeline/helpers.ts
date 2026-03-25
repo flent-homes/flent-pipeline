@@ -92,32 +92,32 @@ export function isLandlordInterestedOrLaterStage(
   return r !== undefined && r >= STAGE_SEMANTIC_RANK.landlord_interested;
 }
 
-/** Stage pills: pale tints need dark label text in light mode; white labels in dark mode. */
+/** Stage pill backgrounds/borders. Label color comes from `.stage-badge` in globals.css. */
 export function stageBadgeClass(stage: string): string {
   const concept = stageConcept(stage);
   if (!concept || concept === "unknown") {
-    return "bg-zinc-500/15 text-zinc-800 dark:bg-zinc-600/30 dark:text-zinc-300 border-zinc-400/45 dark:border-zinc-600/50";
+    return "bg-zinc-500/15 dark:bg-zinc-600/30 border-zinc-400/45 dark:border-zinc-600/50";
   }
 
   switch (concept) {
     case "to_be_contacted":
-      return "bg-flentNight/20 text-zinc-900 dark:bg-flentNight/35 dark:text-white border-flentNight/40 dark:border-flentNight/50";
+      return "bg-flentNight/20 dark:bg-flentNight/35 border-flentNight/40 dark:border-flentNight/50";
     case "in_touch":
-      return "bg-flentCyan/25 text-zinc-900 dark:text-white border-flentCyan/40";
+      return "bg-flentCyan/25 border-flentCyan/40";
     case "landlord_interested":
-      return "bg-flentOrange/25 text-zinc-900 dark:text-white border-flentOrange/40";
+      return "bg-flentOrange/25 border-flentOrange/40";
     case "evaluation_in_progress":
-      return "bg-flentNight/20 text-zinc-900 dark:bg-flentNight/30 dark:text-white border-flentNight/40 dark:border-flentNight/45";
+      return "bg-flentNight/20 dark:bg-flentNight/30 border-flentNight/40 dark:border-flentNight/45";
     case "qualified":
-      return "bg-flentGreen/25 text-zinc-900 dark:bg-flentGreen/30 dark:text-white border-flentGreen/45";
+      return "bg-flentGreen/25 dark:bg-flentGreen/30 border-flentGreen/45";
     case "negotiations_started":
-      return "bg-flentBrick/25 text-zinc-900 dark:bg-flentBrick/30 dark:text-white border-flentBrick/45";
+      return "bg-flentBrick/25 dark:bg-flentBrick/30 border-flentBrick/45";
     case "offer_extended":
-      return "bg-flentYellow/30 text-amber-950 dark:bg-flentYellow/20 dark:text-amber-100 border-flentYellow/45";
+      return "bg-flentYellow/30 dark:bg-flentYellow/20 border-flentYellow/45";
     case "under_contract":
-      return "bg-flentGreen/25 text-zinc-900 dark:bg-flentGreen/35 dark:text-white border-flentGreen/45 dark:border-flentGreen/50";
+      return "bg-flentGreen/25 dark:bg-flentGreen/35 border-flentGreen/45 dark:border-flentGreen/50";
     default:
-      return "bg-zinc-500/20 text-zinc-900 dark:bg-zinc-600/35 dark:text-zinc-200 border-zinc-400/45 dark:border-zinc-500/40";
+      return "bg-zinc-500/20 dark:bg-zinc-600/35 border-zinc-400/45 dark:border-zinc-500/40";
   }
 }
 

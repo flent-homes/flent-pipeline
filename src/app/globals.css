@@ -135,4 +135,12 @@ body {
   .dark .btn-secondary:hover:not(:disabled) {
     background: var(--app-hover-strong);
   }
+
+  /**
+   * Deal stage pills — label uses semantic app text so it always wins over inherited
+   * colors and matches light/dark via --app-text.
+   */
+  .stage-badge {
+    color: var(--app-text) !important;
+  }
 }

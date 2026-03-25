@@ -977,7 +977,7 @@ export default function PipelinePage() {
                                 </div>
                               ) : col.key === STAGE_KEY ? (
                                 <span
-                                  className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${stageBadgeClass(displayVal)}`}
+                                  className={`stage-badge inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${stageBadgeClass(displayVal)}`}
                                 >
                                   {displayVal || "—"}
                                 </span>
@@ -1004,7 +1004,7 @@ export default function PipelinePage() {
                   <div className="flex items-baseline gap-3 mb-2">
                     {stage ? (
                       <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-sm font-medium ${stageBadgeClass(stage)}`}
+                        className={`stage-badge inline-flex rounded-full border px-3 py-1 text-sm font-medium ${stageBadgeClass(stage)}`}
                       >
                         {stage}
                       </span>
