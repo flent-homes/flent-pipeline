@@ -146,3 +146,47 @@ export async function batchUpdateCells(
     },
   });
 }
+
+/**
+ * Ensure required headers exist on row 1; append any missing headers at the end.
+ * Returns the final header list in left-to-right order.
+ */
+export async function ensureHeaders(
+  spreadsheetId: string,
+  rangeA1: string,
+  requiredHeaders: string[],
+  serviceAccountJson: string,
+): Promise<string[]> {
+  const sheets = getSheetsClient(serviceAccountJson);
+  const tab = parseTabNameFromRange(rangeA1);
+  const needsQuote = /[\s']/.test(tab);
+  const tabRef = needsQuote ? `'${tab.replace(/'/g, "''")}'` : tab;
+
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tabRef}!1:1`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const currentHeaders = ((headerRes.data.values?.[0] as string[]) ?? []).map((h) =>
+    String(h ?? "").trim(),
+  );
+
+  const missing = requiredHeaders.filter(
+    (h) => h && !currentHeaders.includes(h),
+  );
+  if (!missing.length) return currentHeaders;
+
+  const startCol = currentHeaders.length;
+  const endCol = startCol + missing.length - 1;
+  const startLetter = columnIndexToLetter(startCol);
+  const endLetter = columnIndexToLetter(endCol);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${tabRef}!${startLetter}1:${endLetter}1`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [missing] },
+  });
+
+  return [...currentHeaders, ...missing];
+}
