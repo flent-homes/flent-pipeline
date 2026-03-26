@@ -17,6 +17,7 @@ import {
   isActiveDeal,
   isUnderContractDeal,
   isWarmPipelineStage,
+  parseSheetDate,
   isWithinLastDays,
   stageSortIndex,
   stageBadgeClass,
@@ -77,6 +78,7 @@ type DealsResponse = {
 };
 
 type ViewMode = "table" | "stages";
+type DealSortOrder = "latest_to_oldest" | "oldest_to_latest";
 
 export default function PipelinePage() {
   const [data, setData] = useState<DealsResponse | null>(null);
@@ -87,6 +89,7 @@ export default function PipelinePage() {
   const [warmFunnelOnly, setWarmFunnelOnly] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [sortOrder, setSortOrder] = useState<DealSortOrder>("latest_to_oldest");
   /** Show only rows the rule engine ranks as “top to pursue” (same logic as the agent). */
   const [aiRecommendedOnly, setAiRecommendedOnly] = useState(false);
   const [selected, setSelected] = useState<Deal | null>(null);
@@ -234,8 +237,24 @@ export default function PipelinePage() {
     if (aiRecommendedOnly) {
       list = filteredDeals.filter((d) => aiRecommendedRows.has(d._sheetRow));
     }
-    return [...list].sort((a, b) => a._sheetRow - b._sheetRow);
-  }, [filteredDeals, aiRecommendedOnly, aiRecommendedRows]);
+    return [...list].sort((a, b) => {
+      const da = parseSheetDate(a[DATE_ADDED_KEY]);
+      const db = parseSheetDate(b[DATE_ADDED_KEY]);
+      if (da && db) {
+        const diff = da.getTime() - db.getTime();
+        if (diff !== 0) {
+          return sortOrder === "latest_to_oldest" ? -diff : diff;
+        }
+      } else if (da && !db) {
+        return sortOrder === "latest_to_oldest" ? -1 : 1;
+      } else if (!da && db) {
+        return sortOrder === "latest_to_oldest" ? 1 : -1;
+      }
+      return sortOrder === "latest_to_oldest"
+        ? b._sheetRow - a._sheetRow
+        : a._sheetRow - b._sheetRow;
+    });
+  }, [filteredDeals, aiRecommendedOnly, aiRecommendedRows, sortOrder]);
 
   /** Grouped by stage; empty string = missing stage (shown as "No stage set", not a funnel pill). */
   const groupedEntries = useMemo(() => {
@@ -851,6 +870,20 @@ export default function PipelinePage() {
                   By stage
                 </button>
               </div>
+              <label className="inline-flex items-center gap-2 rounded-full border border-app-border bg-app-surface px-3 py-2 text-xs text-app-muted dark:bg-app-panel/80">
+                <span className="font-medium uppercase tracking-wider">Sort</span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) =>
+                    setSortOrder(e.target.value as DealSortOrder)
+                  }
+                  className="rounded-md border border-app-border bg-app-input px-2 py-1 text-xs text-app-text focus:outline-none focus:ring-2 focus:ring-ringBrand"
+                  aria-label="Sort deals"
+                >
+                  <option value="latest_to_oldest">Latest to oldest</option>
+                  <option value="oldest_to_latest">Oldest to latest</option>
+                </select>
+              </label>
             </div>
           </div>
         </div>

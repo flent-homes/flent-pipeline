@@ -73,6 +73,10 @@ export function isMyGateSource(source: string): boolean {
   return source.toLowerCase().includes("mygate");
 }
 
+export function isNoBrokerSource(source: string): boolean {
+  return source.toLowerCase().includes("nobroker");
+}
+
 export type MustPursueArgs = {
   source: string;
   phoneMissing: boolean;
@@ -108,6 +112,8 @@ export function pursuitPriorityTier(args: {
   configurationNormalized: string;
   phoneMissing: boolean;
 }): number {
+  // NoBroker is always lower-priority by default.
+  if (isNoBrokerSource(args.source)) return 9;
   if (
     isMyGateMustPursueAsap({
       source: args.source,

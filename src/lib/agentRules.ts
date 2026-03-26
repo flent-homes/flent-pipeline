@@ -18,6 +18,7 @@ import {
   hoursSince,
 } from "@/app/pipeline/helpers";
 import {
+  isNoBrokerSource,
   isMyGateMustPursueAsap,
   pursuitPriorityTier,
 } from "@/lib/dealPrioritization";
@@ -241,7 +242,10 @@ export function getAiPicksToBeContacted(deals: PipelineDeal[]): Recommendation[]
   );
 
   const candidates = withDerived.filter(
-    (d) => d.stageConcept === "to_be_contacted" && !notGreatRows.has(d.sheetRow),
+    (d) =>
+      d.stageConcept === "to_be_contacted" &&
+      !notGreatRows.has(d.sheetRow) &&
+      !isNoBrokerSource(d.source),
   );
 
   const enriched = candidates.map((rec) => {
@@ -350,6 +354,7 @@ export function computeAgentInsights(deals: PipelineDeal[]): AgentInsights {
 
   const topToPursue = withDerived
     .filter((d) => {
+      if (isNoBrokerSource(d.source)) return false;
       const stale = staleToBeContacted.some((s) => s.sheetRow === d.sheetRow);
       if (stale) {
         const keep =
