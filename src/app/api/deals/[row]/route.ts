@@ -4,6 +4,7 @@ import {
   batchUpdateCells,
   ensureHeaders,
   fetchSheetValues,
+  makeColumnDefs,
   rowsToDealRecords,
 } from "@/lib/sheets";
 import { getServerEnv, sheetsConfigured } from "@/lib/env";
@@ -241,7 +242,9 @@ export async function PATCH(
       updates[STAGE_ENTERED_AT_KEY] = nowIso;
     }
 
-    const columnKeysInOrder = headersInOrder;
+    // Mirror UI keying for duplicate headers (e.g. "Comments", "Comments (2)")
+    // so PATCH updates can target the correct duplicate column by index.
+    const columnKeysInOrder = makeColumnDefs(headersInOrder).map((c) => c.key);
 
     await batchUpdateCells(
       env.GOOGLE_SPREADSHEET_ID!,
