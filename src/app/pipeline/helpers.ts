@@ -22,6 +22,10 @@ export const PIPELINE_HIDDEN_COLUMN_KEYS = new Set([
   "Google Drive Link (Media)",
   "After Sep 1",
   "DisqFlag",
+  "AI_Score",
+  "AI_Tier",
+  "AI_Reason",
+  "AI_Run_At",
 ]);
 
 /**

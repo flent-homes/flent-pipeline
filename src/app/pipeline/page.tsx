@@ -8,8 +8,10 @@ import {
   ACTIVE_DAYS_WINDOW,
   CLUSTER_KEY,
   DATE_ADDED_KEY,
+  LISTING_LINK_KEY,
   OWNER_KEY,
   PIPELINE_HIDDEN_COLUMN_KEYS,
+  POC_NUMBER_KEY,
   RENT_KEY,
   STAGE_KEY,
   SOURCE_KEY,
@@ -122,6 +124,18 @@ function shouldShowKanbanStage(stage: string): boolean {
   return true;
 }
 
+function extractFirstUrl(raw: string): string | null {
+  const direct = raw.match(/https?:\/\/[^\s,]+/i);
+  if (direct) return direct[0];
+  const loose = raw.match(/\b(?:www\.)[^\s,]+/i);
+  if (loose) return `https://${loose[0]}`;
+  return null;
+}
+
+function normalizePhoneForCopy(raw: string): string {
+  return raw.replace(/[^\d+]/g, "").trim();
+}
+
 export default function PipelinePage() {
   const [data, setData] = useState<DealsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,6 +159,8 @@ export default function PipelinePage() {
   const [draggingRow, setDraggingRow] = useState<number | null>(null);
   const [dropStage, setDropStage] = useState<string | null>(null);
   const [movingRow, setMovingRow] = useState<number | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
 
   /** Single-cell inline edit: explicit Save / Cancel only (no blur autosave). */
   const [activeCell, setActiveCell] = useState<{
@@ -1114,8 +1130,38 @@ export default function PipelinePage() {
                             <td
                               key={col.key}
                               className={cw.td}
+                              onPointerDown={() => {
+                                if (col.key !== POC_NUMBER_KEY || editing) return;
+                                suppressClickRef.current = false;
+                                if (longPressTimerRef.current) {
+                                  window.clearTimeout(longPressTimerRef.current);
+                                }
+                                longPressTimerRef.current = window.setTimeout(() => {
+                                  const rawPhone = String(row[col.key] ?? "");
+                                  const phone = normalizePhoneForCopy(rawPhone) || rawPhone.trim();
+                                  if (!phone) return;
+                                  suppressClickRef.current = true;
+                                  void navigator.clipboard.writeText(phone);
+                                }, 600);
+                              }}
+                              onPointerUp={() => {
+                                if (longPressTimerRef.current) {
+                                  window.clearTimeout(longPressTimerRef.current);
+                                  longPressTimerRef.current = null;
+                                }
+                              }}
+                              onPointerCancel={() => {
+                                if (longPressTimerRef.current) {
+                                  window.clearTimeout(longPressTimerRef.current);
+                                  longPressTimerRef.current = null;
+                                }
+                              }}
                               onClick={(e) => {
                                 e.stopPropagation();
+                                if (suppressClickRef.current) {
+                                  suppressClickRef.current = false;
+                                  return;
+                                }
                                 openCellEdit(row._sheetRow, col.key);
                               }}
                               onDoubleClick={(e) => onCellDoubleClick(e, row)}
@@ -1183,6 +1229,28 @@ export default function PipelinePage() {
                                 >
                                   {displayVal || "—"}
                                 </span>
+                              ) : col.key === LISTING_LINK_KEY ? (
+                                (() => {
+                                  const href = extractFirstUrl(displayVal);
+                                  if (!href) {
+                                    return (
+                                      <span className="line-clamp-3 break-words">
+                                        {displayVal || "—"}
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-flex max-w-full items-center gap-1 text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                    >
+                                      <span className="truncate">{displayVal || href}</span>
+                                    </a>
+                                  );
+                                })()
                               ) : (
                                 <span className="line-clamp-3 break-words">
                                   {displayVal || "—"}

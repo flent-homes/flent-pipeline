@@ -13,7 +13,7 @@ const patchBodySchema = z.record(z.string(), z.string());
 const STAGE_KEY = "Deal Stage";
 const DISQ_KEY = "Disqualified";
 const STAGE_ENTERED_AT_KEY = "Stage Entered At";
-const STAGE_TIME_COLUMNS: Record<string, string> = {
+const STAGE_TIME_COLUMNS_HUMAN: Record<string, string> = {
   "to be contacted (poc)": "Time in To be contacted (POC)",
   "to be contacted": "Time in To be contacted",
   "in touch": "Time in In touch",
@@ -24,7 +24,7 @@ const STAGE_TIME_COLUMNS: Record<string, string> = {
   "offer extended": "Time in Offer Extended",
   "under contract": "Time in Under contract",
 };
-const LEGACY_STAGE_TIME_COLUMNS: Record<string, string> = {
+const STAGE_TIME_COLUMNS_LEGACY: Record<string, string> = {
   "to be contacted (poc)": "Time in To be contacted (POC) (mins)",
   "to be contacted": "Time in To be contacted (mins)",
   "in touch": "Time in In touch (mins)",
@@ -91,6 +91,35 @@ function formatMinutesHuman(totalMinutes: number): string {
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   }
   return `${minutes}m`;
+}
+
+function resolveEffectiveTimeColumns(existingHeaders: string[]): {
+  byStage: Record<string, string>;
+  missingHeadersToCreate: string[];
+} {
+  const hasAnyLegacy = Object.values(STAGE_TIME_COLUMNS_LEGACY).some((h) =>
+    existingHeaders.includes(h),
+  );
+  const byStage: Record<string, string> = {};
+  const missingHeadersToCreate: string[] = [];
+
+  for (const stage of Object.keys(STAGE_TIME_COLUMNS_HUMAN)) {
+    const human = STAGE_TIME_COLUMNS_HUMAN[stage];
+    const legacy = STAGE_TIME_COLUMNS_LEGACY[stage];
+    if (existingHeaders.includes(human)) {
+      byStage[stage] = human;
+      continue;
+    }
+    if (existingHeaders.includes(legacy)) {
+      byStage[stage] = legacy;
+      continue;
+    }
+    const preferred = hasAnyLegacy ? legacy : human;
+    byStage[stage] = preferred;
+    missingHeadersToCreate.push(preferred);
+  }
+
+  return { byStage, missingHeadersToCreate };
 }
 
 export async function PATCH(
@@ -173,29 +202,29 @@ export async function PATCH(
     const incomingDisq = updates[DISQ_KEY] ?? String(currentRow[DISQ_KEY] ?? "");
     const disqualified = isDisqualifiedValue(incomingDisq);
 
-    const requiredTimingHeaders = [
-      STAGE_ENTERED_AT_KEY,
-      ...Object.values(STAGE_TIME_COLUMNS),
-    ];
+    const existingHeaderKeys = columns.map((c) => c.key);
+    const { byStage: effectiveTimeColumns, missingHeadersToCreate } =
+      resolveEffectiveTimeColumns(existingHeaderKeys);
+
+    // Ensure only missing required columns exist; avoid creating dual (legacy + new) sets.
     const headersInOrder = await ensureHeaders(
       env.GOOGLE_SPREADSHEET_ID!,
       env.GOOGLE_SHEET_RANGE,
-      requiredTimingHeaders,
+      [STAGE_ENTERED_AT_KEY, ...missingHeadersToCreate],
       credentials,
     );
 
     // Add elapsed minutes to the stage being exited.
     if ((stageChanged || disqualified) && previousStageCanonical) {
-      const timeCol = STAGE_TIME_COLUMNS[previousStageCanonical];
+      const timeCol = effectiveTimeColumns[previousStageCanonical];
       if (timeCol) {
         const enteredAtRaw = String(currentRow[STAGE_ENTERED_AT_KEY] ?? "").trim();
         const enteredAt = enteredAtRaw ? new Date(enteredAtRaw) : null;
         if (enteredAt && !Number.isNaN(enteredAt.getTime())) {
           const elapsedMs = Date.now() - enteredAt.getTime();
           const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / (1000 * 60)));
-          const legacyCol = LEGACY_STAGE_TIME_COLUMNS[previousStageCanonical];
           const existingMinutes = parseDurationToMinutes(
-            String(currentRow[timeCol] ?? currentRow[legacyCol] ?? ""),
+            String(currentRow[timeCol] ?? ""),
           );
           updates[timeCol] = formatMinutesHuman(existingMinutes + elapsedMinutes);
         }

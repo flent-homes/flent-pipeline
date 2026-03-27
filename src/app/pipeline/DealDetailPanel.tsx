@@ -124,7 +124,7 @@ export function DealDetailPanel({
   const highlightCols = useMemo(
     () =>
       columns.filter(
-        (c) => HIGHLIGHT_KEYS.has(c.key) || c.key.startsWith("AI_"),
+        (c) => HIGHLIGHT_KEYS.has(c.key),
       ),
     [columns],
   );
