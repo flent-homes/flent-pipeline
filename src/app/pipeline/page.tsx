@@ -136,6 +136,18 @@ function normalizePhoneForCopy(raw: string): string {
   return raw.replace(/[^\d+]/g, "").trim();
 }
 
+function formatElapsedSince(isoValue: string): string | null {
+  const d = new Date(isoValue);
+  if (Number.isNaN(d.getTime())) return null;
+  const mins = Math.max(0, Math.floor((Date.now() - d.getTime()) / (1000 * 60)));
+  const days = Math.floor(mins / (24 * 60));
+  const hours = Math.floor((mins % (24 * 60)) / 60);
+  const minutes = mins % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 export default function PipelinePage() {
   const [data, setData] = useState<DealsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,6 +173,7 @@ export default function PipelinePage() {
   const [movingRow, setMovingRow] = useState<number | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
+  const [copiedMsg, setCopiedMsg] = useState<string | null>(null);
 
   /** Single-cell inline edit: explicit Save / Cancel only (no blur autosave). */
   const [activeCell, setActiveCell] = useState<{
@@ -1142,6 +1155,8 @@ export default function PipelinePage() {
                                   if (!phone) return;
                                   suppressClickRef.current = true;
                                   void navigator.clipboard.writeText(phone);
+                                  setCopiedMsg(`Copied: ${phone}`);
+                                  window.setTimeout(() => setCopiedMsg(null), 1400);
                                 }, 600);
                               }}
                               onPointerUp={() => {
@@ -1360,6 +1375,16 @@ export default function PipelinePage() {
                               <p className="mt-1 line-clamp-1 text-xs text-app-muted">
                                 {cell(stageViewKeys.furnishing)}
                               </p>
+                              {(() => {
+                                const enteredAt = String(row["Stage Entered At"] ?? "").trim();
+                                const elapsed = enteredAt ? formatElapsedSince(enteredAt) : null;
+                                if (!elapsed) return null;
+                                return (
+                                  <p className="mt-1 text-[11px] text-app-muted">
+                                    In stage: {elapsed}
+                                  </p>
+                                );
+                              })()}
                               {pending ? (
                                 <p className="mt-2 text-[11px] font-medium text-app-muted">
                                   Updating stage…
@@ -1398,6 +1423,11 @@ export default function PipelinePage() {
           />
         )}
       </div>
+      {copiedMsg ? (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 z-[120] -translate-x-1/2 rounded-full bg-app-panel px-4 py-2 text-xs text-app-text shadow-brand ring-1 ring-app-border">
+          {copiedMsg}
+        </div>
+      ) : null}
     </div>
   );
 }

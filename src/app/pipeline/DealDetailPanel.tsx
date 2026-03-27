@@ -48,6 +48,30 @@ const HIGHLIGHT_KEYS = new Set([
   LISTING_LINK_KEY,
 ]);
 
+const DISQ_REASON_CANDIDATES = [
+  "Disq reason",
+  "Disq Reason",
+  "Disqualified Reason",
+  "Disqualification Reason",
+  "Comments final",
+];
+
+function resolveFirstExistingColumn(
+  columns: ColumnDef[],
+  candidates: string[],
+): string | null {
+  const exact = new Set(columns.map((c) => c.key));
+  for (const cand of candidates) {
+    if (exact.has(cand)) return cand;
+  }
+  const lower = new Map(columns.map((c) => [c.key.toLowerCase(), c.key] as const));
+  for (const cand of candidates) {
+    const k = lower.get(cand.toLowerCase());
+    if (k) return k;
+  }
+  return null;
+}
+
 function FieldEditor({
   colKey,
   label,
@@ -117,9 +141,20 @@ export function DealDetailPanel({
   onAiScore,
 }: Props) {
   const [showAllFields, setShowAllFields] = useState(false);
+  const [quickDisqReason, setQuickDisqReason] = useState("");
 
   const listingUrl = String(selected[LISTING_LINK_KEY] ?? "").trim();
   const mapsUrl = String(selected["Google Map Location"] ?? "").trim();
+  const reasonKey = useMemo(
+    () => resolveFirstExistingColumn(columns, DISQ_REASON_CANDIDATES),
+    [columns],
+  );
+  const disqNow = String(editDraft[DISQ_KEY] ?? selected[DISQ_KEY] ?? "").trim();
+  const isDisqualified =
+    disqNow.toLowerCase() === "yes" ||
+    disqNow.toLowerCase() === "y" ||
+    disqNow.toLowerCase() === "true" ||
+    disqNow === "1";
 
   const highlightCols = useMemo(
     () =>
@@ -215,6 +250,48 @@ export function DealDetailPanel({
         >
           Copy label
         </button>
+      </div>
+
+      <div className="px-4 py-3 border-b border-app-border bg-app-surface2/60">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setEditDraft((d) => ({
+                ...d,
+                [DISQ_KEY]: "Yes",
+                ...(reasonKey && quickDisqReason.trim()
+                  ? { [reasonKey]: quickDisqReason.trim() }
+                  : {}),
+              }))
+            }
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/35 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/45"
+          >
+            Disqualify now
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditDraft((d) => ({ ...d, [DISQ_KEY]: "" }))}
+            className="rounded-lg border border-app-border bg-app-surface px-3 py-1.5 text-xs font-medium text-app-text hover:bg-app-hover"
+          >
+            Reopen
+          </button>
+          <span className="text-[11px] text-app-muted">
+            Status: {isDisqualified ? "Disqualified" : "Active"}
+          </span>
+        </div>
+        {reasonKey ? (
+          <label className="mt-2 block">
+            <span className="text-[11px] text-app-muted">Disq reason</span>
+            <input
+              type="text"
+              value={quickDisqReason}
+              onChange={(e) => setQuickDisqReason(e.target.value)}
+              placeholder="Optional reason before Disqualify now"
+              className="mt-1 w-full rounded-lg border border-app-border bg-app-input px-3 py-2 text-sm text-app-text placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-ringBrand"
+            />
+          </label>
+        ) : null}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
