@@ -148,6 +148,11 @@ function formatElapsedSince(isoValue: string): string | null {
   return `${minutes}m`;
 }
 
+function isDisqualifiedValue(value: string | number | undefined): boolean {
+  const v = String(value ?? "").trim().toLowerCase();
+  return v === "yes" || v === "y" || v === "true" || v === "1";
+}
+
 export default function PipelinePage() {
   const [data, setData] = useState<DealsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1118,6 +1123,23 @@ export default function PipelinePage() {
                                   );
                                 })()
                               : [];
+                          const isTimeInColumn = /^time in /i.test(col.key);
+                          const currentStageLabel = canonicalKanbanStageLabel(
+                            String(row[STAGE_KEY] ?? ""),
+                          );
+                          const columnStageLabel = isTimeInColumn
+                            ? canonicalKanbanStageLabel(col.key.replace(/^time in /i, ""))
+                            : "";
+                          const enteredAtRaw = String(row["Stage Entered At"] ?? "").trim();
+                          const runningStageTime = enteredAtRaw
+                            ? formatElapsedSince(enteredAtRaw)
+                            : null;
+                          const shouldShowRunningStageTime =
+                            isTimeInColumn &&
+                            !displayVal &&
+                            !!runningStageTime &&
+                            !isDisqualifiedValue(row["Disqualified"]) &&
+                            columnStageLabel === currentStageLabel;
 
                           return (
                             <td
@@ -1246,6 +1268,10 @@ export default function PipelinePage() {
                                     </a>
                                   );
                                 })()
+                              ) : shouldShowRunningStageTime ? (
+                                <span className="line-clamp-3 break-words">
+                                  {runningStageTime}
+                                </span>
                               ) : (
                                 <span className="line-clamp-3 break-words">
                                   {displayVal || "—"}
