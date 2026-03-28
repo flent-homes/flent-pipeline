@@ -201,21 +201,29 @@ export function DealDetailPanel({
   );
 
   return (
-    <div className="fixed inset-0 z-[110] flex justify-end">
+    <div
+      className="fixed inset-0 z-[200] flex justify-end isolate"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deal-panel-title"
+    >
       <button
         type="button"
         aria-label="Close details panel"
         onClick={onClose}
-        className="h-full flex-1 bg-black/35 backdrop-blur-[1px]"
+        className="h-full flex-1 bg-black/55 dark:bg-black/70"
       />
-      <aside className="h-screen w-full max-w-[420px] border-l border-flentGreen/10 bg-app-surface text-app-text shadow-brand dark:border-flentNight/20">
-      <div className="flex h-full flex-col">
+      <aside className="relative z-10 flex h-screen w-full max-w-[420px] flex-col border-l border-flentGreen/10 bg-app-surface text-app-text shadow-2xl shadow-black/20 dark:border-flentNight/20 dark:bg-[#0f172a]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="p-4 border-b border-app-border flex justify-between items-start gap-3 bg-gradient-to-br from-flentNight/12 via-app-panel to-flentGreen/[0.06] dark:from-flentNight/25 dark:via-app-panel dark:to-flentGreen/10">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wider text-flentGreen font-medium dark:text-flentCyan/90">
             Row {selected._sheetRow}
           </p>
-          <h2 className="text-lg font-semibold text-app-text mt-1 leading-snug">
+          <h2
+            id="deal-panel-title"
+            className="text-lg font-semibold text-app-text mt-1 leading-snug"
+          >
             {String(selected[BUILDING_KEY] || selected["Property Type"] || "Untitled lead")}
           </h2>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -414,7 +422,7 @@ export function DealDetailPanel({
         )}
 
         {/* Sticky actions so reps never need to scroll down to Save. */}
-        <div className="sticky bottom-0 left-0 right-0 bg-app-panel/95 backdrop-blur border-t border-flentGreen/10 p-3 z-20 dark:border-flentNight/15">
+        <div className="sticky bottom-0 left-0 right-0 border-t border-flentGreen/10 bg-app-surface p-3 z-20 dark:border-flentNight/15 dark:bg-[#0f172a]">
           <div className="flex items-center justify-between gap-3">
             {saving ? (
               <span className="text-xs text-app-muted">Auto-saving…</span>

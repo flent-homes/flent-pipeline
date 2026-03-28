@@ -1443,25 +1443,25 @@ export default function PipelinePage() {
             </div>
           )}
         </main>
-
-        {selected && (
-          <DealDetailPanel
-            selected={selected}
-            columns={visibleColumns}
-            editDraft={editDraft}
-            setEditDraft={setEditDraft}
-            fieldOptions={fieldOptions}
-            saving={saving}
-            saveError={saveError}
-            aiLoading={aiLoading}
-            aiResult={aiResult}
-            onClose={() => setSelected(null)}
-            onAiScore={(apply) => void runAiScore(apply)}
-          />
-        )}
       </div>
+
+      {selected && (
+        <DealDetailPanel
+          selected={selected}
+          columns={visibleColumns}
+          editDraft={editDraft}
+          setEditDraft={setEditDraft}
+          fieldOptions={fieldOptions}
+          saving={saving}
+          saveError={saveError}
+          aiLoading={aiLoading}
+          aiResult={aiResult}
+          onClose={() => setSelected(null)}
+          onAiScore={(apply) => void runAiScore(apply)}
+        />
+      )}
       {copiedMsg ? (
-        <div className="pointer-events-none fixed bottom-4 left-1/2 z-[120] -translate-x-1/2 rounded-full bg-app-panel px-4 py-2 text-xs text-app-text shadow-brand ring-1 ring-app-border">
+        <div className="pointer-events-none fixed bottom-4 left-1/2 z-[220] -translate-x-1/2 rounded-full bg-app-panel px-4 py-2 text-xs text-app-text shadow-brand ring-1 ring-app-border">
           {copiedMsg}
         </div>
       ) : null}
