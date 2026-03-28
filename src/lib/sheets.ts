@@ -190,3 +190,98 @@ export async function ensureHeaders(
 
   return [...currentHeaders, ...missing];
 }
+
+/** A1 tab reference with quoting for names that contain spaces or quotes. */
+export function tabRefForSheetName(tabName: string): string {
+  const needsQuote = /[\s']/.test(tabName);
+  return needsQuote ? `'${tabName.replace(/'/g, "''")}'` : tabName;
+}
+
+async function getSheetIdByTitle(
+  spreadsheetId: string,
+  title: string,
+  serviceAccountJson: string,
+): Promise<number | null> {
+  const sheets = getSheetsClient(serviceAccountJson);
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets(properties(sheetId,title))",
+  });
+  const found = (meta.data.sheets ?? []).find(
+    (s) => s.properties?.title === title,
+  );
+  const id = found?.properties?.sheetId;
+  return id === undefined || id === null ? null : id;
+}
+
+/**
+ * Create the worksheet if missing; ensure row 1 has the same headers as the main tab when empty.
+ */
+export async function ensureLostWorksheetWithHeaders(
+  spreadsheetId: string,
+  lostSheetName: string,
+  headerRow: string[],
+  serviceAccountJson: string,
+): Promise<void> {
+  if (!headerRow.length) {
+    throw new Error("ensureLostWorksheetWithHeaders: header row is empty.");
+  }
+  const sheets = getSheetsClient(serviceAccountJson);
+  if (
+    (await getSheetIdByTitle(
+      spreadsheetId,
+      lostSheetName,
+      serviceAccountJson,
+    )) === null
+  ) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: { title: lostSheetName },
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  const tabRef = tabRefForSheetName(lostSheetName);
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tabRef}!1:1`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const existing = (headerRes.data.values?.[0] as string[]) ?? [];
+  const rowEmpty =
+    !existing.length ||
+    existing.every((c) => !String(c ?? "").trim());
+  if (rowEmpty) {
+    const endLetter = columnIndexToLetter(headerRow.length - 1);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${tabRef}!A1:${endLetter}1`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [headerRow] },
+    });
+  }
+}
+
+export async function appendRowToSheetTab(
+  spreadsheetId: string,
+  tabName: string,
+  rowValues: string[],
+  serviceAccountJson: string,
+): Promise<void> {
+  const sheets = getSheetsClient(serviceAccountJson);
+  const tabRef = tabRefForSheetName(tabName);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${tabRef}!A1`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [rowValues] },
+  });
+}

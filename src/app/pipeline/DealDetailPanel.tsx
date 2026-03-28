@@ -208,7 +208,7 @@ export function DealDetailPanel({
         onClick={onClose}
         className="h-full flex-1 bg-black/35 backdrop-blur-[1px]"
       />
-      <aside className="h-screen w-full max-w-[420px] border-l border-flentGreen/10 bg-white shadow-brand dark:border-flentNight/20 dark:bg-[#0f172a]">
+      <aside className="h-screen w-full max-w-[420px] border-l border-flentGreen/10 bg-app-surface text-app-text shadow-brand dark:border-flentNight/20">
       <div className="flex h-full flex-col">
       <div className="p-4 border-b border-app-border flex justify-between items-start gap-3 bg-gradient-to-br from-flentNight/12 via-app-panel to-flentGreen/[0.06] dark:from-flentNight/25 dark:via-app-panel dark:to-flentGreen/10">
         <div className="min-w-0 flex-1">

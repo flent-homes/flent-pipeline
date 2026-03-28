@@ -466,7 +466,11 @@ export default function PipelinePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [ac.colKey]: draft }),
       });
-      const json = (await res.json()) as { error?: string; message?: string };
+      const json = (await res.json()) as {
+        error?: string;
+        message?: string;
+        movedToLost?: boolean;
+      };
       if (!res.ok) {
         setSaveError(json.message ?? json.error ?? "Save failed");
         return;
@@ -496,12 +500,13 @@ export default function PipelinePage() {
       });
       setActiveCell(null);
       setCellDraft("");
+      if (json.movedToLost) void load();
     } catch {
       setSaveError("Network error while saving.");
     } finally {
       setSaving(false);
     }
-  }, [activeCell, cellDraft, cancelInlineEdit]);
+  }, [activeCell, cellDraft, cancelInlineEdit, load]);
 
   const openDealPanel = useCallback((row: Deal) => {
     setActiveCell(null);
@@ -577,7 +582,11 @@ export default function PipelinePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = (await res.json()) as { error?: string; message?: string };
+      const json = (await res.json()) as {
+        error?: string;
+        message?: string;
+        movedToLost?: boolean;
+      };
       if (!res.ok) {
         setSaveError(json.message ?? json.error ?? "Save failed");
         return;
@@ -600,12 +609,13 @@ export default function PipelinePage() {
           ),
         };
       });
+      if (json.movedToLost) void load();
     } catch {
       setSaveError("Network error while saving.");
     } finally {
       setSaving(false);
     }
-  }, [selected, editDraft]);
+  }, [selected, editDraft, load]);
 
   const isDirty = useMemo(() => {
     if (!selected) return false;
@@ -705,10 +715,16 @@ export default function PipelinePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ [STAGE_KEY]: targetStage }),
         });
-        const json = (await res.json()) as { error?: string; message?: string };
+        const json = (await res.json()) as {
+          error?: string;
+          message?: string;
+          movedToLost?: boolean;
+        };
         if (!res.ok) {
           applyLocalStage(prevStage);
           setSaveError(json.message ?? json.error ?? "Save failed");
+        } else if (json.movedToLost) {
+          void load();
         }
       } catch {
         applyLocalStage(prevStage);
@@ -717,7 +733,7 @@ export default function PipelinePage() {
         setMovingRow(null);
       }
     },
-    [],
+    [load],
   );
 
   return (
@@ -1008,7 +1024,7 @@ export default function PipelinePage() {
                   onClick={() => setViewMode("table")}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                     viewMode === "table"
-                      ? "bg-white text-app-text shadow-sm ring-1 ring-app-border/50 dark:bg-white/15 dark:text-white dark:ring-white/10"
+                      ? "bg-app-surface text-app-text shadow-sm ring-1 ring-app-border/60 dark:bg-app-card dark:text-app-text dark:ring-white/15"
                       : "text-app-muted hover:text-app-text"
                   }`}
                 >
@@ -1019,7 +1035,7 @@ export default function PipelinePage() {
                   onClick={() => setViewMode("kanban")}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                     viewMode === "kanban"
-                      ? "bg-white text-app-text shadow-sm ring-1 ring-app-border/50 dark:bg-white/15 dark:text-white dark:ring-white/10"
+                      ? "bg-app-surface text-app-text shadow-sm ring-1 ring-app-border/60 dark:bg-app-card dark:text-app-text dark:ring-white/15"
                       : "text-app-muted hover:text-app-text"
                   }`}
                 >
@@ -1086,7 +1102,7 @@ export default function PipelinePage() {
                       return (
                         <th
                           key={col.key}
-                          className={`${cw.th} sticky top-0 z-30 bg-white dark:bg-[#0f172a]`}
+                          className={`${cw.th} sticky top-0 z-30 bg-app-surface text-app-muted`}
                         >
                           {col.label}
                         </th>
@@ -1366,7 +1382,7 @@ export default function PipelinePage() {
                                   ? "border-app-border bg-app-surface2 opacity-60"
                                   : active
                                     ? "border-flentGreen/45 bg-flentGreen/12 dark:bg-flentGreen/20"
-                                    : "border-app-border bg-app-card hover:border-flentGreen/35 hover:bg-app-hover"
+                                    : "border-app-border bg-app-card text-app-text hover:border-flentGreen/35 hover:bg-app-hover dark:bg-app-card"
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">

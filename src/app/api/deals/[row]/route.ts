@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  appendRowToSheetTab,
   batchUpdateCells,
   ensureHeaders,
+  ensureLostWorksheetWithHeaders,
   fetchSheetValues,
   makeColumnDefs,
+  parseTabNameFromRange,
   rowsToDealRecords,
+  type DealRow,
 } from "@/lib/sheets";
 import { getServerEnv, sheetsConfigured } from "@/lib/env";
 import { resolveServiceAccountJson } from "@/lib/google-credentials";
+import { LOST_PIPELINE_STAGE } from "@/app/pipeline/helpers";
 
 const patchBodySchema = z.record(z.string(), z.string());
 const STAGE_KEY = "Deal Stage";
@@ -92,6 +97,19 @@ function formatMinutesHuman(totalMinutes: number): string {
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   }
   return `${minutes}m`;
+}
+
+function buildMergedRowValues(
+  currentRow: DealRow,
+  updates: Record<string, string>,
+  columnKeysInOrder: string[],
+): string[] {
+  return columnKeysInOrder.map((key) => {
+    if (Object.prototype.hasOwnProperty.call(updates, key)) {
+      return String(updates[key] ?? "");
+    }
+    return String(currentRow[key] ?? "");
+  });
 }
 
 function resolveEffectiveTimeColumns(existingHeaders: string[]): {
@@ -246,6 +264,36 @@ export async function PATCH(
     // so PATCH updates can target the correct duplicate column by index.
     const columnKeysInOrder = makeColumnDefs(headersInOrder).map((c) => c.key);
 
+    const mainTab = parseTabNameFromRange(env.GOOGLE_SHEET_RANGE);
+    const lostTab = env.GOOGLE_LOST_SHEET_NAME.trim();
+    const previousStageRaw = String(currentRow[STAGE_KEY] ?? "").trim();
+    const finalStage = String(updates[STAGE_KEY] ?? currentRow[STAGE_KEY] ?? "").trim();
+    /** Only append a copy to the Lost tab when transitioning into Lost (avoid duplicate rows on every save). */
+    const movingToLost =
+      finalStage.toLowerCase() === LOST_PIPELINE_STAGE.toLowerCase() &&
+      previousStageRaw.toLowerCase() !== LOST_PIPELINE_STAGE.toLowerCase() &&
+      mainTab !== lostTab;
+
+    if (movingToLost) {
+      const mergedValues = buildMergedRowValues(
+        currentRow,
+        updates,
+        columnKeysInOrder,
+      );
+      await ensureLostWorksheetWithHeaders(
+        env.GOOGLE_SPREADSHEET_ID!,
+        lostTab,
+        headersInOrder,
+        credentials,
+      );
+      await appendRowToSheetTab(
+        env.GOOGLE_SPREADSHEET_ID!,
+        lostTab,
+        mergedValues,
+        credentials,
+      );
+    }
+
     await batchUpdateCells(
       env.GOOGLE_SPREADSHEET_ID!,
       env.GOOGLE_SHEET_RANGE,
@@ -255,7 +303,14 @@ export async function PATCH(
       credentials,
     );
 
-    return NextResponse.json({ ok: true, sheetRow, updated: Object.keys(updates) });
+    return NextResponse.json({
+      ok: true,
+      sheetRow,
+      updated: Object.keys(updates),
+      ...(movingToLost
+        ? { movedToLost: true, lostSheet: lostTab }
+        : {}),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
