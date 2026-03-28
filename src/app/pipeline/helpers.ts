@@ -41,7 +41,12 @@ export const STAGE_ORDER = [
   "Negotiations started",
   "Offer Extended",
   "Under contract",
+  /** Terminal — moved out of active pipeline (lost / closed-lost). */
+  "Lost",
 ] as const;
+
+/** Sheet value for the lost pipeline when marking a deal lost from the UI. */
+export const LOST_PIPELINE_STAGE = "Lost";
 
 export function parseRent(value: string | number | undefined): number | null {
   if (value === undefined || value === null) return null;
@@ -64,6 +69,16 @@ const STAGE_SEMANTIC_RANK: Record<string, number> = {
   offer_extended: 6,
   under_contract: 7,
 };
+
+/** True when stage is Evaluation in progress or any later funnel stage (Qualified → Under contract). */
+export function isEvaluationInProgressOrLater(
+  stage: string | number | undefined,
+): boolean {
+  const concept = stageConcept(stage);
+  const r = STAGE_SEMANTIC_RANK[concept];
+  if (r === undefined) return false;
+  return r >= STAGE_SEMANTIC_RANK.evaluation_in_progress;
+}
 
 /** UI sort: same as funnel order — To be contacted → … → Under contract; ad-hoc stages last. */
 const STAGE_DISPLAY_RANK: Record<string, number> = {

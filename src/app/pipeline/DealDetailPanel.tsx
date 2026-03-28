@@ -8,11 +8,13 @@ import {
   DATE_ADDED_KEY,
   DISQ_KEY,
   LISTING_LINK_KEY,
+  LOST_PIPELINE_STAGE,
   OWNER_KEY,
   POC_TYPE_KEY,
   RENT_KEY,
   SOURCE_KEY,
   STAGE_KEY,
+  isEvaluationInProgressOrLater,
   stageBadgeClass,
 } from "./helpers";
 
@@ -170,6 +172,8 @@ export function DealDetailPanel({
   }, [fieldOptions, reasonKey]);
   const finalReason =
     quickDisqReason === "Other" ? customDisqReason.trim() : quickDisqReason.trim();
+  const stageForLabels = String(editDraft[STAGE_KEY] ?? selected[STAGE_KEY] ?? "");
+  const isDealLostMode = isEvaluationInProgressOrLater(stageForLabels);
   const disqNow = String(editDraft[DISQ_KEY] ?? selected[DISQ_KEY] ?? "").trim();
   const isDisqualified =
     disqNow.toLowerCase() === "yes" ||
@@ -197,7 +201,7 @@ export function DealDetailPanel({
   );
 
   return (
-    <div className="fixed inset-0 z-[80] flex justify-end">
+    <div className="fixed inset-0 z-[110] flex justify-end">
       <button
         type="button"
         aria-label="Close details panel"
@@ -283,24 +287,31 @@ export function DealDetailPanel({
 
       <div className="px-4 py-3 border-b border-app-border bg-app-surface2/60">
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (!showDisqPicker) {
-                setShowDisqPicker(true);
-                return;
-              }
-              setEditDraft((d) => ({
-                ...d,
-                [DISQ_KEY]: "Yes",
-                ...(reasonKey && finalReason ? { [reasonKey]: finalReason } : {}),
-              }));
-              setShowDisqPicker(false);
-            }}
-            className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/35 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/45"
-          >
-            {showDisqPicker ? "Confirm disqualify" : "Disqualify now"}
-          </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!showDisqPicker) {
+              setShowDisqPicker(true);
+              return;
+            }
+            setEditDraft((d) => ({
+              ...d,
+              [DISQ_KEY]: "Yes",
+              ...(isDealLostMode ? { [STAGE_KEY]: LOST_PIPELINE_STAGE } : {}),
+              ...(reasonKey && finalReason ? { [reasonKey]: finalReason } : {}),
+            }));
+            setShowDisqPicker(false);
+          }}
+          className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/35 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/45"
+        >
+          {showDisqPicker
+            ? isDealLostMode
+              ? "Confirm deal lost"
+              : "Confirm disqualify"
+            : isDealLostMode
+              ? "Deal Lost"
+              : "Disqualify now"}
+        </button>
           <button
             type="button"
             onClick={() => {
@@ -317,7 +328,9 @@ export function DealDetailPanel({
         </div>
         {showDisqPicker && reasonKey ? (
           <label className="mt-2 block">
-            <span className="text-[11px] text-app-muted">Disq reason</span>
+            <span className="text-[11px] text-app-muted">
+              {isDealLostMode ? "Reason for loss" : "Disq reason"}
+            </span>
             <select
               value={quickDisqReason}
               onChange={(e) => setQuickDisqReason(e.target.value)}
