@@ -8,6 +8,8 @@ const serverSchema = z.object({
   GOOGLE_SPREADSHEET_ID: z.string().min(5).optional(),
   /** Full tab: `SupplyDump!A:ZZ` = all rows, columns A–ZZ */
   GOOGLE_SHEET_RANGE: z.string().min(1).default("SupplyDump!A:ZZ"),
+  /** Worksheet tab name where rows are moved when Deal Stage becomes Lost (created if missing). */
+  GOOGLE_LOST_SHEET_NAME: z.string().min(1).default("Lost deals"),
 
   /** GCP project for Vertex (defaults to project_id inside service account JSON). */
   GOOGLE_CLOUD_PROJECT: z.string().min(1).optional(),
@@ -34,6 +36,7 @@ export function getServerEnv(): ServerEnv {
     GOOGLE_SERVICE_ACCOUNT_KEY_PATH: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
     GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID,
     GOOGLE_SHEET_RANGE: process.env.GOOGLE_SHEET_RANGE,
+    GOOGLE_LOST_SHEET_NAME: process.env.GOOGLE_LOST_SHEET_NAME,
     GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
     VERTEX_LOCATION: process.env.VERTEX_LOCATION,
     VERTEX_GEMINI_MODEL: process.env.VERTEX_GEMINI_MODEL,

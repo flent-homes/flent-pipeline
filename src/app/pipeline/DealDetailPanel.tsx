@@ -1,7 +1,8 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   BUILDING_KEY,
   CLUSTER_KEY,
@@ -198,9 +199,17 @@ export function DealDetailPanel({
     [columns],
   );
 
-  return (
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const panel = (
     <div
-      className="fixed inset-0 z-[200] flex justify-end isolate"
+      className="fixed inset-0 z-[9999] flex justify-end isolate"
       role="dialog"
       aria-modal="true"
       aria-labelledby="deal-panel-title"
@@ -211,9 +220,9 @@ export function DealDetailPanel({
         onClick={onClose}
         className="h-full flex-1 bg-black/55 dark:bg-black/70"
       />
-      <aside className="relative z-10 flex h-screen w-full max-w-[420px] flex-col border-l border-flentGreen/10 bg-app-surface text-app-text shadow-2xl shadow-black/20 dark:border-flentNight/20 dark:bg-[#0f172a]">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="p-4 border-b border-app-border flex justify-between items-start gap-3 bg-gradient-to-br from-flentNight/12 via-app-panel to-flentGreen/[0.06] dark:from-flentNight/25 dark:via-app-panel dark:to-flentGreen/10">
+      <aside className="relative z-10 flex h-screen w-full max-w-[420px] flex-col border-l border-flentGreen/10 bg-white text-app-text shadow-2xl shadow-black/20 dark:border-flentNight/20 dark:bg-[#0f172a]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-[#0f172a]">
+      <div className="p-4 border-b border-app-border flex justify-between items-start gap-3 bg-app-panel dark:bg-app-panel">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wider text-flentGreen font-medium dark:text-flentCyan/90">
             Row {selected._sheetRow}
@@ -423,4 +432,7 @@ export function DealDetailPanel({
       </aside>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(panel, document.body);
 }
