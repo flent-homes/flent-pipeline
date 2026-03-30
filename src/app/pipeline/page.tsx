@@ -159,14 +159,28 @@ function isDisqualifiedValue(value: string | number | undefined): boolean {
   return v === "yes" || v === "y" || v === "true" || v === "1";
 }
 
+function parseCsvParam(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function toggleSelection(prev: string[], value: string): string[] {
+  if (prev.includes(value)) return prev.filter((v) => v !== value);
+  return [...prev, value];
+}
+
 export default function PipelinePage() {
   const [data, setData] = useState<DealsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [stageFilter, setStageFilter] = useState<string>("");
+  const [stageFilters, setStageFilters] = useState<string[]>([]);
   /** When true, table/stages show only Landlord interested and later funnel stages. */
   const [warmFunnelOnly, setWarmFunnelOnly] = useState(false);
-  const [ownerFilter, setOwnerFilter] = useState<string>("");
+  const [ownerFilters, setOwnerFilters] = useState<string[]>([]);
+  const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [sortOrder, setSortOrder] = useState<DealSortOrder>("latest_to_oldest");
   /** Show only rows the rule engine ranks as “top to pursue” (same logic as the agent). */
@@ -213,10 +227,9 @@ export default function PipelinePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const owner = params.get("owner") ?? "";
-    const stage = params.get("stage") ?? "";
-    if (owner) setOwnerFilter(owner);
-    if (stage) setStageFilter(stage);
+    setOwnerFilters(parseCsvParam(params.get("owner")));
+    setStageFilters(parseCsvParam(params.get("stage")));
+    setSourceFilters(parseCsvParam(params.get("source")));
   }, []);
 
   const columns = useMemo(() => data?.columns ?? [], [data?.columns]);
@@ -245,20 +258,26 @@ export default function PipelinePage() {
    */
   const dealsForStageStats = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const ownerSet = new Set(ownerFilters);
+    const sourceSet = new Set(sourceFilters);
     return recentDeals.filter((d) => {
       if (warmFunnelOnly && !isWarmPipelineStage(d[STAGE_KEY])) {
         return false;
       }
-      if (ownerFilter) {
+      if (ownerSet.size > 0) {
         const owner = String(d[OWNER_KEY] ?? "").trim() || "(unassigned)";
-        if (owner !== ownerFilter) return false;
+        if (!ownerSet.has(owner)) return false;
+      }
+      if (sourceSet.size > 0) {
+        const source = String(d[SOURCE_KEY] ?? "").trim() || "(unassigned)";
+        if (!sourceSet.has(source)) return false;
       }
       if (!q) return true;
       return Object.values(d).some((v) =>
         String(v).toLowerCase().includes(q),
       );
     });
-  }, [recentDeals, query, ownerFilter, warmFunnelOnly]);
+  }, [recentDeals, query, ownerFilters, sourceFilters, warmFunnelOnly]);
 
   const stageCounts = useMemo(
     () => countByStage(dealsForStageStats),
@@ -288,26 +307,49 @@ export default function PipelinePage() {
         .map(([name]) => name),
     [ownerCounts],
   );
+  const sourceCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of recentDeals) {
+      const source = String(d[SOURCE_KEY] ?? "").trim() || "(unassigned)";
+      m.set(source, (m.get(source) ?? 0) + 1);
+    }
+    return m;
+  }, [recentDeals]);
+  const sourceOptions = useMemo(
+    () =>
+      Array.from(sourceCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name),
+    [sourceCounts],
+  );
 
   const filteredDeals = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const stageSet = new Set(stageFilters);
+    const ownerSet = new Set(ownerFilters);
+    const sourceSet = new Set(sourceFilters);
     return recentDeals.filter((d) => {
       if (warmFunnelOnly && !isWarmPipelineStage(d[STAGE_KEY])) {
         return false;
       }
-      if (stageFilter && String(d[STAGE_KEY] ?? "").trim() !== stageFilter) {
-        return false;
+      if (stageSet.size > 0) {
+        const stage = String(d[STAGE_KEY] ?? "").trim();
+        if (!stageSet.has(stage)) return false;
       }
-      if (ownerFilter) {
+      if (ownerSet.size > 0) {
         const owner = String(d[OWNER_KEY] ?? "").trim() || "(unassigned)";
-        if (owner !== ownerFilter) return false;
+        if (!ownerSet.has(owner)) return false;
+      }
+      if (sourceSet.size > 0) {
+        const source = String(d[SOURCE_KEY] ?? "").trim() || "(unassigned)";
+        if (!sourceSet.has(source)) return false;
       }
       if (!q) return true;
       return Object.values(d).some((v) =>
         String(v).toLowerCase().includes(q),
       );
     });
-  }, [recentDeals, query, stageFilter, ownerFilter, warmFunnelOnly]);
+  }, [recentDeals, query, stageFilters, ownerFilters, sourceFilters, warmFunnelOnly]);
 
   const { aiRecommendedRows, aiRecommendedCount } = useMemo(() => {
     const picks = getAiPicksToBeContacted(filteredDeals);
@@ -344,7 +386,9 @@ export default function PipelinePage() {
   /** Kanban should always show full stage columns, even if some are empty. */
   const kanbanColumns = useMemo(() => {
     const stageOpts = selectOptionsForColumn(STAGE_KEY, deals).filter(Boolean);
-    if (stageFilter && !stageOpts.includes(stageFilter)) stageOpts.push(stageFilter);
+    for (const s of stageFilters) {
+      if (s && !stageOpts.includes(s)) stageOpts.push(s);
+    }
 
     const canonical = new Map<string, true>();
     for (const s of stageOpts) {
@@ -358,7 +402,7 @@ export default function PipelinePage() {
       if (ia !== ib) return ia - ib;
       return a.localeCompare(b);
     });
-  }, [deals, stageFilter]);
+  }, [deals, stageFilters]);
 
   const kanbanByStage = useMemo(() => {
     const m = new Map<string, Deal[]>();
@@ -787,7 +831,7 @@ export default function PipelinePage() {
           onClick={() => {
             setWarmFunnelOnly((prev) => {
               const next = !prev;
-              if (next) setStageFilter("");
+              if (next) setStageFilters([]);
               return next;
             });
           }}
@@ -852,7 +896,7 @@ export default function PipelinePage() {
       <div className="border-b border-app-border bg-app-bg">
         <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-8 sm:px-6 lg:px-8">
           <div className="surface-muted p-5 sm:p-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
+            <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-app-muted">
                   Owner
@@ -860,8 +904,8 @@ export default function PipelinePage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setOwnerFilter("")}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${!ownerFilter ? "border-flentGreen/45 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white" : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"}`}
+                    onClick={() => setOwnerFilters([])}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${ownerFilters.length === 0 ? "border-flentGreen/45 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white" : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"}`}
                   >
                     All owners
                   </button>
@@ -870,16 +914,42 @@ export default function PipelinePage() {
                       key={owner}
                       type="button"
                       onClick={() =>
-                        setOwnerFilter(owner === ownerFilter ? "" : owner)
+                        setOwnerFilters((prev) => toggleSelection(prev, owner))
                       }
-                      className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${ownerFilter === owner ? "border-flentGreen/40 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white" : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"}`}
+                      className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${ownerFilters.includes(owner) ? "border-flentGreen/40 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white" : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"}`}
                     >
                       {owner} ({ownerCounts.get(owner)})
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="min-w-0 flex-1 lg:border-l lg:border-app-border lg:pl-10">
+              <div className="min-w-0 flex-1 lg:border-l lg:border-app-border lg:pl-8">
+                <p className="text-xs font-semibold uppercase tracking-wider text-app-muted">
+                  Source
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSourceFilters([])}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${sourceFilters.length === 0 ? "border-flentGreen/45 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white" : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"}`}
+                  >
+                    All sources
+                  </button>
+                  {sourceOptions.map((source) => (
+                    <button
+                      key={source}
+                      type="button"
+                      onClick={() =>
+                        setSourceFilters((prev) => toggleSelection(prev, source))
+                      }
+                      className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${sourceFilters.includes(source) ? "border-flentGreen/40 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white" : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"}`}
+                    >
+                      {source} ({sourceCounts.get(source)})
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="min-w-0 flex-1 lg:border-l lg:border-app-border lg:pl-8">
                 <p className="text-xs font-semibold uppercase tracking-wider text-app-muted">
                   Stage
                 </p>
@@ -888,10 +958,10 @@ export default function PipelinePage() {
                     type="button"
                     onClick={() => {
                       setWarmFunnelOnly(false);
-                      setStageFilter("");
+                      setStageFilters([]);
                     }}
                     className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
-                      !stageFilter
+                      stageFilters.length === 0
                         ? "border-flentGreen/45 bg-flentGreen/15 font-semibold text-app-text dark:bg-flentGreen/25 dark:text-white"
                         : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"
                     }`}
@@ -904,10 +974,10 @@ export default function PipelinePage() {
                       type="button"
                       onClick={() => {
                         setWarmFunnelOnly(false);
-                        setStageFilter(s === stageFilter ? "" : s);
+                        setStageFilters((prev) => toggleSelection(prev, s));
                       }}
                       className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
-                        stageFilter === s
+                        stageFilters.includes(s)
                           ? "border-flentNight/40 bg-flentNight/10 font-semibold text-flentNight dark:bg-flentNight/35 dark:text-white"
                           : "border-app-border text-app-muted hover:bg-app-hover dark:hover:bg-app-hover-strong"
                       }`}
