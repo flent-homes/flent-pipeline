@@ -235,30 +235,33 @@ export default function PipelinePage() {
 
   const columns = useMemo(() => data?.columns ?? [], [data?.columns]);
   const deals = useMemo(() => data?.deals ?? [], [data?.deals]);
-  const ownerAttributionKey = useMemo(
+  const ownerColumnKey = useMemo(
     () =>
       resolveColumnKey(columns, [
+        OWNER_KEY,
+        "Deal Owner",
+        "Deal owner",
         ADDED_BY_KEY,
         "Added By",
         "Added by ",
         "Added By ",
-      ]) ?? ADDED_BY_KEY,
+      ]) ?? OWNER_KEY,
     [columns],
   );
   const dealsRef = useRef(deals);
   dealsRef.current = deals;
 
-  /** "Owner" filters are attribution-based (Added by), with fallback for older sheets. */
+  /** Owner filters should reflect accountable reps (Deal Owner), not lead source attribution. */
   const ownerAttributionValue = useCallback(
     (d: Record<string, string | number>) =>
       String(
-        d[ownerAttributionKey] ??
+        d[ownerColumnKey] ??
+          d[OWNER_KEY] ??
           d[ADDED_BY_KEY] ??
           d["Added by"] ??
-          d[OWNER_KEY] ??
           "",
       ).trim() || "(unassigned)",
-    [ownerAttributionKey],
+    [ownerColumnKey],
   );
 
   /** All non-DQ deals in the 60d window (includes Under contract / onboarded). */
